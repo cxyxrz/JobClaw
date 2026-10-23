@@ -1,15 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { api, type PingData, type UserOut } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 
-const MODULES: Array<{ name: string; note: string }> = [
-  { name: "采集任务", note: "提交文本/网页/Excel/图片采集，任务池与进度推送（M2–M3）" },
-  { name: "职位管理", note: "草稿审核与发布、职位查询（M1）" },
-  { name: "字典管理", note: "城市/届别/会员价格等字典与版本同步（M1）" },
+const MODULES: Array<{ name: string; note: string; href?: string }> = [
+  { name: "采集任务", note: "提交文本/网页/Excel/图片采集，AI 自动抽取字段", href: "/admin/collect" },
+  { name: "草稿审核", note: "审核采集草稿，通过则转为正式职位", href: "/admin/drafts" },
+  { name: "职位管理", note: "草稿审核与发布、职位查询", href: "/admin/jobs" },
+  { name: "字典管理", note: "城市/届别/会员价格等字典与版本同步" },
   { name: "会员订单", note: "微信支付订单与 VIP 发放（M4）" },
 ];
 
@@ -67,15 +69,24 @@ export default function AdminPage() {
         {ping ? `ping=${ping.pong}` : "检测中…"}
       </p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {MODULES.map((m) => (
-          <section
-            key={m.name}
-            className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm"
-          >
-            <h2 className="font-medium">{m.name}</h2>
-            <p className="mt-2 text-sm text-gray-500">{m.note}</p>
-          </section>
-        ))}
+        {MODULES.map((m) => {
+          const inner = (
+            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow-md">
+              <h2 className="font-medium text-gray-900">{m.name}</h2>
+              <p className="mt-2 text-sm text-gray-500">{m.note}</p>
+              {m.href && (
+                <span className="mt-3 inline-block text-sm text-blue-600">进入 →</span>
+              )}
+            </section>
+          );
+          return m.href ? (
+            <Link key={m.name} href={m.href}>
+              {inner}
+            </Link>
+          ) : (
+            <div key={m.name}>{inner}</div>
+          );
+        })}
       </div>
     </main>
   );

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from ....core.permissions import AuthSubject, require_perm
 from ....core.response import ApiResponse
 from ....modules.auth.schemas import PingData
-from . import dicts, jobs
+from . import dicts, drafts, jobs
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -17,3 +17,4 @@ async def ping(
 
 router.include_router(jobs.router)
 router.include_router(dicts.router)
+router.include_router(drafts.router)

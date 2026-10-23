@@ -148,3 +148,91 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   }
   return body.data;
 }
+
+/* ---------------- M2 采集与草稿 ---------------- */
+
+export interface CollectResult {
+  draft_id: number | null;
+  status: string;
+  confidence: number;
+  title: string | null;
+  company: string | null;
+  message: string;
+}
+
+export interface DraftOut {
+  id: number;
+  title: string | null;
+  company: string | null;
+  city: string | null;
+  batch: string | null;
+  category: string | null;
+  salary_text: string | null;
+  description: string;
+  source_url: string | null;
+  source_type: string;
+  confidence: number;
+  status: string;
+  review_note: string | null;
+  created_at: string;
+}
+
+export interface DraftPage {
+  items: DraftOut[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export async function submitCollect(
+  source_type: string,
+  content: string,
+): Promise<CollectResult> {
+  return api<CollectResult>("/api/v1/collect", {
+    method: "POST",
+    body: JSON.stringify({ source_type, content }),
+  });
+}
+
+export async function submitCollectFile(
+  source_type: "excel" | "image",
+  file: File,
+): Promise<CollectResult> {
+  const form = new FormData();
+  form.append("source_type", source_type);
+  form.append("file", file);
+  const headers = new Headers();
+  const token = getToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(`${API_BASE}/api/v1/collect/upload`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  const body = (await res.json()) as Envelope<CollectResult>;
+  if (!res.ok || body.code !== 0) {
+    throw new ApiError(body.code, res.status, body.message);
+  }
+  return body.data;
+}
+
+export async function fetchDrafts(
+  status?: string,
+  page = 1,
+  page_size = 20,
+): Promise<DraftPage> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(page_size) });
+  if (status) params.set("status", status);
+  return api<DraftPage>(`/api/v1/admin/drafts?${params}`);
+}
+
+export async function reviewDraft(
+  id: number,
+  action: "accept" | "reject",
+  note?: string,
+): Promise<DraftOut> {
+  return api<DraftOut>(`/api/v1/admin/drafts/${id}/review`, {
+    method: "POST",
+    body: JSON.stringify({ action, note }),
+  });
+}
