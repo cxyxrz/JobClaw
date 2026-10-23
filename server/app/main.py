@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,7 @@ from .core.context import RequestContextMiddleware
 from .core.errors import register_exception_handlers
 from .core.logging import configure_logging
 from .infra.db import dispose_db, get_sessionmaker, init_db
+from .modules.agents.scheduler_agent import start_scheduler, stop_scheduler
 from .modules.auth.service import ensure_seed
 from .modules.dicts.service import ensure_seed_dicts
 from .modules.jobs.service import ensure_seed_jobs
@@ -26,7 +28,13 @@ async def lifespan(app: FastAPI):
             await ensure_seed_dicts(session)
             await ensure_seed_jobs(session)
             await session.commit()
+    # 任务调度 Agent：APScheduler 随应用启停（表未迁移时降级跳过）
+    try:
+        await start_scheduler()
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger("jobclaw").warning("scheduler_start_failed: %s", exc)
     yield
+    await stop_scheduler()
     await dispose_db()
 
 

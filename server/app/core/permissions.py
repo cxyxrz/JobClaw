@@ -33,6 +33,7 @@ ROLE_PERMS: dict[str, set[str]] = {
         "job:publish",
         "dict:manage",
         "user:manage",
+        "agent:manage",
     },
     "USER": set(),
 }

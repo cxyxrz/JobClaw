@@ -106,6 +106,10 @@ export async function fetchJobs(query: JobQuery = {}): Promise<JobPage> {
   return api<JobPage>(`/api/v1/jobs${qs ? `?${qs}` : ""}`);
 }
 
+export async function fetchJobById(id: number): Promise<JobOut> {
+  return api<JobOut>(`/api/v1/jobs/${id}`);
+}
+
 /** Fetch the dict snapshot; honors the version param and reports 304 Not Modified. */
 export async function fetchDicts(
   version?: number,

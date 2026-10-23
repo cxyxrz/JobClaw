@@ -1,23 +1,32 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Files, ThumbsDown, ThumbsUp } from "lucide-react";
 
 import { fetchDrafts, reviewDraft, type DraftOut } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+
+const STATUS_TABS: Array<{ value: string; label: string }> = [
+  { value: "", label: "全部" },
+  { value: "REVIEW", label: "待审核" },
+  { value: "DRAFT", label: "草稿" },
+  { value: "ACCEPTED", label: "已通过" },
+  { value: "REJECTED", label: "已拒绝" },
+];
+
+const STATUS_BADGE: Record<string, string> = {
+  DRAFT: "bg-blue-50 text-blue-600",
+  REVIEW: "bg-amber-50 text-amber-600",
+  ACCEPTED: "bg-green-50 text-green-600",
+  REJECTED: "bg-slate-100 text-slate-500",
+};
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "草稿",
   REVIEW: "待审核",
   ACCEPTED: "已通过",
   REJECTED: "已拒绝",
-};
-const STATUS_COLOR: Record<string, string> = {
-  DRAFT: "text-blue-600",
-  REVIEW: "text-amber-600",
-  ACCEPTED: "text-green-600",
-  REJECTED: "text-red-500",
 };
 
 export default function DraftsPage() {
@@ -60,132 +69,174 @@ export default function DraftsPage() {
 
   if (!authed) {
     return (
-      <main className="mx-auto w-full max-w-6xl px-6 py-10 text-sm text-gray-500">
-        加载中…
-      </main>
+      <div className="p-6 sm:p-8">
+        <div className="h-40 animate-pulse rounded-2xl border border-slate-100 bg-white" />
+      </div>
     );
   }
 
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">草稿审核</h1>
-        <Link
-          href="/admin/collect"
-          className="text-sm text-blue-600 hover:text-blue-700"
+    <div className="p-6 sm:p-8">
+      <div className="mb-6">
+        <div className="eyebrow">
+          <Files className="h-3.5 w-3.5 text-blue-500" />
+          DRAFT REVIEW
+        </div>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-950">
+          草稿审核
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          审核通过后草稿将自动转为正式职位发布。
+        </p>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {STATUS_TABS.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => {
+                setStatus(t.value);
+                setPage(1);
+              }}
+              aria-pressed={status === t.value}
+              className={`h-8 rounded-lg px-3.5 text-xs font-medium transition ${
+                status === t.value
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 hover:text-slate-800"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-slate-400">共 {total} 条</span>
+      </div>
+
+      {error && (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600"
         >
-          ← 新建采集
-        </Link>
-      </div>
+          {error}
+        </p>
+      )}
 
-      <div className="mt-4 flex gap-3 text-sm">
-        {["", "REVIEW", "DRAFT", "ACCEPTED", "REJECTED"].map((s) => (
-          <button
-            key={s}
-            onClick={() => {
-              setStatus(s);
-              setPage(1);
-            }}
-            className={
-              status === s
-                ? "rounded-md bg-blue-600 px-3 py-1.5 text-white"
-                : "rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:border-gray-400"
-            }
-          >
-            {s ? STATUS_LABEL[s] : "全部"}
-          </button>
-        ))}
-      </div>
-
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-
-      <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-left text-xs text-gray-500">
-                <th className="px-4 py-3 font-medium">职位</th>
-                <th className="px-4 py-3 font-medium">公司</th>
-                <th className="px-4 py-3 font-medium">城市/届别</th>
-                <th className="px-4 py-3 font-medium">置信度</th>
-                <th className="px-4 py-3 font-medium">来源</th>
-                <th className="px-4 py-3 font-medium">状态</th>
-                <th className="px-4 py-3 font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((d) => (
-                <tr key={d.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="max-w-44 truncate px-4 py-3 font-medium">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[860px] text-left text-sm">
+          <thead className="bg-slate-50/80 text-xs text-slate-500">
+            <tr>
+              <th className="px-5 py-4 font-medium">职位 / 公司</th>
+              <th className="px-5 py-4 font-medium">城市 / 届别</th>
+              <th className="px-5 py-4 font-medium">置信度</th>
+              <th className="px-5 py-4 font-medium">来源</th>
+              <th className="px-5 py-4 font-medium">状态</th>
+              <th className="px-5 py-4 font-medium">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((d) => (
+              <tr
+                key={d.id}
+                className="border-t border-slate-100 hover:bg-slate-50/60"
+              >
+                <td className="max-w-56 px-5 py-3.5">
+                  <p className="truncate font-medium text-slate-900">
                     {d.title ?? "—"}
-                  </td>
-                  <td className="max-w-40 truncate px-4 py-3">{d.company ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {d.city ?? "—"} / {d.batch ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={
-                        d.confidence >= 0.6 ? "text-green-600" : "text-amber-600"
-                      }
-                    >
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-slate-500">
+                    {d.company ?? "—"}
+                  </p>
+                </td>
+                <td className="whitespace-nowrap px-5 py-3.5 text-slate-600">
+                  {d.city ?? "—"} / {d.batch ?? "—"}
+                </td>
+                <td className="px-5 py-3.5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-14 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full ${
+                          d.confidence >= 0.6 ? "bg-green-400" : "bg-amber-400"
+                        }`}
+                        style={{ width: `${Math.round(d.confidence * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-slate-500">
                       {(d.confidence * 100).toFixed(0)}%
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">{d.source_type}</td>
-                  <td className={`px-4 py-3 ${STATUS_COLOR[d.status] ?? ""}`}>
+                  </div>
+                </td>
+                <td className="px-5 py-3.5">
+                  <span className="soft-tag">{d.source_type}</span>
+                </td>
+                <td className="px-5 py-3.5">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                      STATUS_BADGE[d.status] ?? "bg-slate-100 text-slate-500"
+                    }`}
+                  >
                     {STATUS_LABEL[d.status] ?? d.status}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => onReview(d.id, "accept")}
-                        className="rounded-md bg-blue-600 px-2.5 py-1 text-xs text-white hover:bg-blue-700"
-                      >
-                        通过
-                      </button>
-                      <button
-                        onClick={() => onReview(d.id, "reject")}
-                        className="rounded-md border border-gray-300 px-2.5 py-1 text-xs text-gray-700 hover:border-gray-400"
-                      >
-                        拒绝
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {items.length === 0 && (
-                <tr className="border-t border-gray-100">
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
-                    暂无草稿
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex items-center justify-center gap-4 border-t border-gray-100 py-3 text-sm text-gray-500">
+                  </span>
+                </td>
+                <td className="px-5 py-3.5">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onReview(d.id, "accept")}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                      通过
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onReview(d.id, "reject")}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                      拒绝
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr className="border-t border-slate-100">
+                <td
+                  colSpan={6}
+                  className="px-5 py-10 text-center text-sm text-slate-400"
+                >
+                  暂无草稿
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <div className="flex items-center justify-center gap-4 border-t border-slate-100 py-3.5 text-sm text-slate-500">
           <button
+            type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             ‹ 上一页
           </button>
-          <span>
-            共 {total} 条 · 第 {page} / {totalPages} 页
+          <span className="text-xs">
+            第 {page} / {totalPages} 页
           </span>
           <button
+            type="button"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             下一页 ›
           </button>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
